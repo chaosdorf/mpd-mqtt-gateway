@@ -6,7 +6,7 @@ DEBUG = "DEBUG" in os.environ
 print("Debugging: {} (You might want to set DEBUG.)".format(DEBUG))
 
 # connect to Sentry (pip3 install raven)
-if "SENTRY_DSN" in os.enivron:
+if "SENTRY_DSN" in os.environ:
     import raven
     raven = raven.Client(os.environ["SENTRY_DSN"])
     print("Connected to Sentry.")

@@ -3,16 +3,20 @@
 # DEBUG
 import os
 DEBUG = "DEBUG" in os.environ
-print("Debugging: {} (You might want to set DEBUG.)".format(DEBUG))
+print("Debugging: {} {}".format(DEBUG, "(You might want to set DEBUG.)" if not DEBUG else ""))
 
 # connect to Sentry (pip3 install raven)
-if "SENTRY_DSN" in os.environ:
-    import raven
-    raven = raven.Client(os.environ["SENTRY_DSN"])
-    print("Connected to Sentry.")
+if not DEBUG:
+    if "SENTRY_DSN" in os.environ:
+        import raven
+        raven = raven.Client(os.environ["SENTRY_DSN"])
+        print("Connected to Sentry.")
+    else:
+        raven = None
+        print("Didn't connect to Sentry. You might want to set SENTRY_DSN.")
 else:
-    raven = None
-    print("Didn't connect to Sentry. You might want to set SENTRY_DSN.")
+        raven = None
+        print("Didn't connect to Sentry because DEBUG is set.")
 
 def handle_status(playing):
     title = playing.get("title")

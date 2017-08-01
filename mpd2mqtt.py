@@ -3,13 +3,16 @@
 # DEBUG
 import os
 DEBUG = "DEBUG" in os.environ
+print("Debugging: {} (You might want to set DEBUG.)".format(DEBUG))
 
 # connect to Sentry (pip3 install raven)
 if "SENTRY_DSN" in os.enivron:
     import raven
     raven = raven.Client(os.environ["SENTRY_DSN"])
+    print("Connected to Sentry.")
 else:
     raven = None
+    print("Didn't connect to Sentry. You might want to set SENTRY_DSN.")
 
 try:
     # connect to mpd (apt install python3-mpd)
@@ -27,6 +30,7 @@ try:
     mqtt = paho.mqtt.client.Client()
     mqtt.connect("mqttserver")
     mqtt.loop_start()
+    print("Connected to mqtt.")
 
     # SIGTERM
     import signal
@@ -48,6 +52,7 @@ try:
         mqtt.publish("music/source", "mpd")
 
     def quit():
+        print("Exiting...")
         mqtt.loop_stop(force=False)
         mpd.close()
         mpd.disconnect()

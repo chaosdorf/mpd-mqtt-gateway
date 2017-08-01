@@ -14,6 +14,27 @@ else:
     raven = None
     print("Didn't connect to Sentry. You might want to set SENTRY_DSN.")
 
+def handle_status(playing):
+    title = playing.get("title")
+    artist = playing.get("artist")
+    album = playing.get("album")
+    if DEBUG:
+        print("------------------------")
+        print("Currently playing: {}".format(playing))
+        print("Title: {}".format(title))
+        print("Artist: {}".format(artist))
+        print("Album: {}".format(album))
+    mqtt.publish("music/title", title)
+    mqtt.publish("music/artist", artist)
+    mqtt.publish("music/album", album)
+    mqtt.publish("music/source", "mpd")
+
+def quit():
+    print("Exiting...")
+    mqtt.loop_stop(force=False)
+    mpd.close()
+    mpd.disconnect()
+
 try:
     # connect to mpd (apt install python3-mpd)
 
@@ -35,27 +56,6 @@ try:
     # SIGTERM
     import signal
     signal.signal(signal.SIGTERM, quit)
-
-    def handle_status(playing):
-        title = playing.get("title")
-        artist = playing.get("artist")
-        album = playing.get("album")
-        if DEBUG:
-            print("------------------------")
-            print("Currently playing: {}".format(playing))
-            print("Title: {}".format(title))
-            print("Artist: {}".format(artist))
-            print("Album: {}".format(album))
-        mqtt.publish("music/title", title)
-        mqtt.publish("music/artist", artist)
-        mqtt.publish("music/album", album)
-        mqtt.publish("music/source", "mpd")
-
-    def quit():
-        print("Exiting...")
-        mqtt.loop_stop(force=False)
-        mpd.close()
-        mpd.disconnect()
 
     try:
         while True:

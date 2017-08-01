@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# connect to mpd
+# connect to mpd (apt install python3-mpd)
 
 from mpd import MPDClient
 mpd = MPDClient()
@@ -8,7 +8,7 @@ mpd.idletimeout = None
 mpd.connect("mpd", 6600)
 print("Connected to mpd: version {}".format(mpd.mpd_version))
 
-# connect to mqtt
+# connect to mqtt (pip3 install paho-mqtt)
 
 import paho.mqtt.client
 

@@ -51,7 +51,6 @@ try:
     # connect to mqtt (pip3 install paho-mqtt)
 
     import paho.mqtt.client
-
     mqtt = paho.mqtt.client.Client()
     mqtt.connect("mqttserver")
     mqtt.loop_start()

@@ -71,6 +71,4 @@ try:
 except Exception as exc:
     if raven:
         raven.captureException()
-        print("Exception: {}".format(exc))
-    else:
-        raise
+    raise

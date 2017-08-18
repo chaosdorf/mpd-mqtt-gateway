@@ -22,6 +22,10 @@ def handle_status(playing):
     title = playing.get("title")
     artist = playing.get("artist")
     album = playing.get("album")
+    if not artist and not album and title:
+        if " - " in title:
+            artist = title.split(" - ")[0]
+            title = title.split(" - ")[1]
     if DEBUG:
         print("------------------------")
         print("Currently playing: {}".format(playing))

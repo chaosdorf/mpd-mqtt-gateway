@@ -12,8 +12,5 @@ ADD . /app
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
 
-# Define environment variable
-# ENV DEBUG true
-
 # Run app.py when the container launches
 CMD ["./mpd2mqtt.py"]

@@ -6,15 +6,8 @@ import socket
 from mpd import MPDClient, MPDError, CommandError
 import paho.mqtt.client
 
+
 logger = logging.getLogger(__name__)
-
-
-class ShutdownException(Exception):
-    """
-    Custom exception which is used to trigger the clean exit of all running
-    worker threads and the gateway.
-    """
-    pass
 
 
 class MpdMqttGateway():
@@ -23,6 +16,7 @@ class MpdMqttGateway():
     using a queue.
     """
     def __init__(self, mpd_server, mqtt_server, mqtt_topic):
+        self.exit = threading.Event()
         self.mpd_server = mpd_server
         self.mqtt_server = mqtt_server
         self.mqtt_topic = mqtt_topic
@@ -32,35 +26,33 @@ class MpdMqttGateway():
         Run the workers. This method is blocking. To shutdown the gateway, call
         shutdown() from e.g. a signal handler.
         """
+        music_events = queue.Queue(maxsize=100)
+        reader_thread = MpdReaderThread(
+            mpd_server=self.mpd_server,
+            target_queue=music_events,
+        )
+        writer_thread = MqttWriterThread(
+            source_queue=music_events,
+            mqtt_server=self.mqtt_server,
+            topic=self.mqtt_topic
+        )
         logger.info("Starting mpd mqtt gateway")
-        try:
-            music_events = queue.Queue(maxsize=100)
-            reader_thread = MpdReaderThread(
-                mpd_server=self.mpd_server,
-                target_queue=music_events,
-            )
-            writer_thread = MqttWriterThread(
-                source_queue=music_events,
-                mqtt_server=self.mqtt_server,
-                topic=self.mqtt_topic
-            )
-            reader_thread.start()
-            writer_thread.start()
-            logger.info("Started mpd mqtt gateway")
-             # Keep the main thread running, otherwise signals are ignored.
-            while True:
-                time.sleep(0.5)
-        except ShutdownException:
-            logger.info("Trying to stop mpd mqtt gateway gracefully")
-            reader_thread.shutdown()
-            writer_thread.shutdown()
-            reader_thread.join()
-            writer_thread.join()
-        finally:
-            logger.info("Stopped mpd mqtt gateway")
+        reader_thread.start()
+        writer_thread.start()
+        self.__wait_until_shutdown()
+        logger.info("Trying to stop mpd mqtt gateway gracefully")
+        reader_thread.shutdown()
+        writer_thread.shutdown()
+        reader_thread.join()
+        writer_thread.join()
+        logger.info("Stopped mpd mqtt gateway")
+
+    def __wait_until_shutdown(self):
+        while not self.exit.is_set():
+            self.exit.wait(10)
 
     def shutdown(self):
-        raise ShutdownException
+        self.exit.set()
 
 
 class MpdReaderThread(threading.Thread):
@@ -104,7 +96,7 @@ class MpdReaderThread(threading.Thread):
             while not self.exit.is_set():
                 metadata = self.mpd_server.metadata()
                 if metadata != last_metadata:
-                    logger.info("Pushing new metadata to queue: %s", metadata)
+                    logger.info("Detected new metadata: %s", metadata)
                     self.__push_to_queue(metadata)
                     last_metadata = metadata
                 self.exit.wait(self.polling_interval)
@@ -258,7 +250,7 @@ class MqttServer():
 
     def publish(self, topic, metadata):
         logger.debug("Publishing metadata to topic '%s': %s", topic, metadata)
-        self.mqtt.publish("%s/source".format(topic), metadata.source)
+        self.mqtt.publish("%s/source".format(topic), "mpd")
         self.mqtt.publish("%s/title".format(topic), metadata.title)
         self.mqtt.publish("%s/artist".format(topic), metadata.artist)
         self.mqtt.publish("%s/album".format(topic), metadata.album)

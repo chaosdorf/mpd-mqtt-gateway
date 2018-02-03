@@ -13,4 +13,4 @@ ADD . /app
 RUN pip install -r requirements.txt
 
 # Run app.py when the container launches
-CMD ["./mpd2mqtt.py"]
+CMD ["/usr/local/bin/python", "server.py", "--mpd-hostname=mpd.chaosdorf.space", "--mqtt-hostname=mqttserver.chaosdorf.space"]

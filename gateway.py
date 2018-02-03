@@ -258,10 +258,10 @@ class MqttServer():
 
     def publish(self, topic, metadata):
         logger.debug("Publishing metadata to topic '%s': %s", topic, metadata)
-        #self.mqtt.publish("%s/source".format(topic), metadata.source)
-        #self.mqtt.publish("%s/title".format(topic), metadata.title)
-        #self.mqtt.publish("%s/artist".format(topic), metadata.artist)
-        #self.mqtt.publish("%s/album".format(topic), metadata.album)
+        self.mqtt.publish("%s/source".format(topic), metadata.source)
+        self.mqtt.publish("%s/title".format(topic), metadata.title)
+        self.mqtt.publish("%s/artist".format(topic), metadata.artist)
+        self.mqtt.publish("%s/album".format(topic), metadata.album)
 
     def disconnect(self):
         try:

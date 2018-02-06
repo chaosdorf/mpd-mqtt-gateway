@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import signal
 import os
 import logging

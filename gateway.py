@@ -149,6 +149,7 @@ class MqttWriterThread(threading.Thread):
                 if metadata != None:
                     logger.info("Pushing metadata to topic '%s': %s", self.topic, metadata)
                     self.mqtt_server.publish(self.topic, metadata)
+                self.mqtt_server.loop()
         except (OSError, IOError) as err:
             logger.error("MQTT connection failed: %s", err.strerror)
             raise
@@ -247,6 +248,10 @@ class MqttServer():
             keepalive=self.timeout
         )
         logger.info("Connected to mqtt server")
+
+    def loop(self):
+        logger.debug("Processing incoming/outgoing mqtt packets")
+        self.mqtt.loop(timeout=0.05)
 
     def publish(self, topic, metadata):
         logger.debug("Publishing metadata to topic '%s': %s", topic, metadata)

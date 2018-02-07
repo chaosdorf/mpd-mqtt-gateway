@@ -49,7 +49,7 @@ class MpdMqttGateway():
 
     def __wait_until_shutdown(self):
         while not self.exit.is_set():
-            self.exit.wait(10)
+            self.exit.wait(timeout=0.05)
 
     def shutdown(self):
         self.exit.set()

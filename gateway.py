@@ -116,7 +116,7 @@ class MpdReaderThread(threading.Thread):
         try:
             self.target_queue.put(metadata, block=False)
         except queue.Full:
-            logger.error("Queue full, dropping metadata", event)
+            logger.error("Queue full, dropping metadata", metadata)
 
 
 class MqttWriterThread(threading.Thread):

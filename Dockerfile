@@ -2,6 +2,7 @@
 
 # Use an official Python runtime as a parent image
 FROM python:3-alpine
+RUN pip install --no-cache-dir pipenv
 
 # Set the working directory to /app
 WORKDIR /app
@@ -10,7 +11,7 @@ WORKDIR /app
 ADD . /app
 
 # Install any needed packages specified in requirements.txt
-RUN pip install -r requirements.txt
+RUN pipenv install --system --deploy
 
 # Run app.py when the container launches
 CMD ["./server.py", "--mpd-hostname=mpd.chaosdorf.space", "--mqtt-hostname=mqttserver.chaosdorf.space"]

@@ -3,8 +3,8 @@ import signal
 import os
 import logging
 import argparse
+import pathlib
 from gateway import MpdServer, MqttServer, MpdMqttGateway
-
 
 def setup_logging():
     logging.basicConfig(
@@ -25,12 +25,17 @@ def parse_arguments():
 
 
 def setup_sentry():
-    if "SENTRY_DSN" not in os.environ:
+    dsn_secret_path = pathlib.Path("/run/secrets/SENTRY_DSN")
+    if dsn_secret_path.exists():
+        dsn = dsn_secret_path.read_text().strip()
+    elif "SENTRY_DSN" in os.environ:
+        dsn = os.environ["SENTRY_DSN"]
+    else:
         logging.warn("Didn't connect to Sentry because SENTRY_DSN is not set.")
         return None
     import raven
-    logging.info("Connecting to Sentry: %s", os.environ["SENTRY_DSN"])
-    raven = raven.Client(os.environ["SENTRY_DSN"])
+    logging.info("Connecting to Sentry: %s", dsn)
+    raven = raven.Client(dsn)
     logging.info("Connected to Sentry.")
     return raven
 

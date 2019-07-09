@@ -9,5 +9,6 @@ paho-mqtt = "*"
 raven = "*"
 
 [dev-packages]
+mypy = "*"
 
 [requires]

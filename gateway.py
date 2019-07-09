@@ -2,6 +2,7 @@ import time
 import logging
 import queue
 import threading
+import typing
 import socket
 from mpd import MPDClient, MPDError, CommandError
 import paho.mqtt.client
@@ -15,18 +16,21 @@ class MpdMqttGateway():
     The gateway creates workers for MPD and MQTT servers and wires them together
     using a queue.
     """
-    def __init__(self, mpd_server, mqtt_server, mqtt_topic):
+    def __init__(
+        self: "MpdMqttGateway", mpd_server: "MpdServer",
+        mqtt_server: "MqttServer", mqtt_topic: str
+    ) -> None:
         self.exit = threading.Event()
         self.mpd_server = mpd_server
         self.mqtt_server = mqtt_server
         self.mqtt_topic = mqtt_topic
 
-    def run(self):
+    def run(self: "MpdMqttGateway") -> None:
         """
         Run the workers. This method is blocking. To shutdown the gateway, call
         shutdown() from e.g. a signal handler.
         """
-        music_events = queue.Queue(maxsize=100)
+        music_events: "queue.Queue[MpdMetadata]" = queue.Queue(maxsize=100)
         reader_thread = MpdReaderThread(
             mpd_server=self.mpd_server,
             target_queue=music_events,
@@ -47,11 +51,11 @@ class MpdMqttGateway():
         writer_thread.join()
         logger.info("Stopped mpd mqtt gateway")
 
-    def __wait_until_shutdown(self):
+    def __wait_until_shutdown(self: "MpdMqttGateway") -> None:
         while not self.exit.is_set():
             self.exit.wait(timeout=0.05)
 
-    def shutdown(self):
+    def shutdown(self: "MpdMqttGateway") -> None:
         self.exit.set()
 
 
@@ -62,7 +66,11 @@ class MpdReaderThread(threading.Thread):
     the server comes back online or shutdown() is called.
     """
 
-    def __init__(self, mpd_server, target_queue, polling_interval=5.0, retry_interval=5.0):
+    def __init__(
+        self: "MpdReaderThread", mpd_server: "MpdServer",
+        target_queue: "queue.Queue[MpdMetadata]",
+        polling_interval: float = 5.0, retry_interval: float = 5.0
+    ) -> None:
         """
         mpd_server: MpdReader to access mpd server
         target_queue: Queue where metadata will be written to
@@ -76,7 +84,7 @@ class MpdReaderThread(threading.Thread):
         self.polling_interval = polling_interval
         self.retry_interval = retry_interval
 
-    def run(self):
+    def run(self: "MpdReaderThread") -> None:
         logger.info("MPD worker started")
         while not self.exit.is_set():
             try:
@@ -86,10 +94,10 @@ class MpdReaderThread(threading.Thread):
                 self.exit.wait(self.retry_interval)
         logger.info("MPD worker stopped")
 
-    def shutdown(self):
+    def shutdown(self: "MpdReaderThread") -> None:
         self.exit.set()
 
-    def __run_polling_loop(self):
+    def __run_polling_loop(self: "MpdReaderThread") -> None:
         try:
             last_metadata = None
             self.mpd_server.connect()
@@ -112,7 +120,9 @@ class MpdReaderThread(threading.Thread):
         finally:
             self.mpd_server.disconnect()
 
-    def __push_to_queue(self, metadata):
+    def __push_to_queue(
+        self: "MpdReaderThread", metadata: "MpdMetadata"
+    ) -> None:
         try:
             self.target_queue.put(metadata, block=False)
         except queue.Full:
@@ -120,7 +130,10 @@ class MpdReaderThread(threading.Thread):
 
 
 class MqttWriterThread(threading.Thread):
-    def __init__(self, source_queue, mqtt_server, topic, retry_interval=5.0):
+    def __init__(
+        self: "MqttWriterThread", source_queue: "queue.Queue[MpdMetadata]",
+        mqtt_server: "MqttServer", topic: str, retry_interval: float = 5.0
+    ) -> None:
         threading.Thread.__init__(self, name="MqttWriterThread")
         self.exit = threading.Event()
         self.mqtt_server = mqtt_server
@@ -128,7 +141,7 @@ class MqttWriterThread(threading.Thread):
         self.source_queue = source_queue
         self.retry_interval = retry_interval
 
-    def run(self):
+    def run(self: "MqttWriterThread") -> None:
         logger.info("MQTT worker started")
         while not self.exit.is_set():
             try:
@@ -138,15 +151,15 @@ class MqttWriterThread(threading.Thread):
                 self.exit.wait(self.retry_interval)
         logger.info("MQTT worker stopped")
 
-    def shutdown(self):
+    def shutdown(self: "MqttWriterThread") -> None:
         self.exit.set()
 
-    def __run_polling_loop(self):
+    def __run_polling_loop(self: "MqttWriterThread") -> None:
         try:
             self.mqtt_server.connect()
             while not self.exit.is_set():
                 metadata = self.__read_from_queue()
-                if metadata != None:
+                if metadata is not None:
                     logger.info("Pushing metadata to topic '%s': %s", self.topic, metadata)
                     self.mqtt_server.publish(self.topic, metadata)
                 self.mqtt_server.loop()
@@ -159,7 +172,9 @@ class MqttWriterThread(threading.Thread):
         finally:
             self.mqtt_server.disconnect()
 
-    def __read_from_queue(self):
+    def __read_from_queue(
+        self: "MqttWriterThread"
+    ) -> "typing.Optional[MpdMetadata]":
         try:
             return self.source_queue.get(block=True, timeout=0.05)
         except queue.Empty:
@@ -167,7 +182,9 @@ class MqttWriterThread(threading.Thread):
 
 
 class MpdMetadata():
-    def __init__(self, mpdsong):
+    def __init__(
+        self: "MpdMetadata", mpdsong: typing.Dict[str, typing.Any]
+    ) -> None:
         """
         Creates a new metadata object based on the result from currentsong().
         """
@@ -185,10 +202,10 @@ class MpdMetadata():
         self.artist = artist
         self.album = album
 
-    def __str__(self):
+    def __str__(self: "MpdMetadata") -> str:
         return str(self.__dict__)
 
-    def __eq__(self, other): 
+    def __eq__(self: "MpdMetadata", other: typing.Any) -> bool: 
         return other != None and self.__dict__ == other.__dict__
 
 
@@ -199,26 +216,28 @@ class MpdServer():
     the server comes back online or shutdown() is called.
     """
 
-    def __init__(self, hostname, port=6600, timeout=5):
+    def __init__(
+        self: "MpdServer", hostname: str, port: int = 6600, timeout: int = 5
+    ) -> None:
         self.hostname = hostname
         self.port = port
         self.timeout = timeout
         self.mpd = None
 
-    def connect(self):
+    def connect(self: "MpdServer") -> None:
         logger.info("Connecting to mpd server at %s:%s", self.hostname, self.port)
         self.mpd = MPDClient()
         self.mpd.timeout = self.timeout
         self.mpd.connect(self.hostname, self.port)
         logger.info("Connected to mpd server, version: %s", self.mpd.mpd_version)
 
-    def metadata(self):
+    def metadata(self: "MpdServer") -> "MpdMetadata":
         song = self.mpd.currentsong()
         metadata = MpdMetadata(song)
         logger.debug("Received metadata from MPD server: %s", metadata)
         return metadata
 
-    def disconnect(self):
+    def disconnect(self: "MpdServer") -> None:
         try:
             self.mpd.close()
             logger.info("Sent close command to mpd server")
@@ -232,14 +251,16 @@ class MpdServer():
 
 
 class MqttServer():
-    def __init__(self, hostname, port=1883, timeout=5):
+    def __init__(
+        self: "MqttServer", hostname: str, port: int = 1883, timeout: int = 5
+    ) -> None:
         self.exit = threading.Event()
         self.hostname = hostname
         self.port = port
         self.timeout = timeout
         self.mqtt = None
 
-    def connect(self):
+    def connect(self: "MqttServer") -> None:
         logger.info("Connecting to mqtt server at %s:%s", self.hostname, self.port)
         self.mqtt = paho.mqtt.client.Client()
         self.mqtt.connect(
@@ -249,18 +270,20 @@ class MqttServer():
         )
         logger.info("Connected to mqtt server")
 
-    def loop(self):
+    def loop(self: "MqttServer") -> None:
         logger.debug("Processing incoming/outgoing mqtt packets")
         self.mqtt.loop(timeout=0.05)
 
-    def publish(self, topic, metadata):
+    def publish(
+        self: "MqttServer", topic: str, metadata: "MpdMetadata"
+    ) -> None:
         logger.debug("Publishing metadata to topic '%s': %s", topic, metadata)
         self.mqtt.publish("{}/source".format(topic), "mpd")
         self.mqtt.publish("{}/title".format(topic), metadata.title)
         self.mqtt.publish("{}/artist".format(topic), metadata.artist)
         self.mqtt.publish("{}/album".format(topic), metadata.album)
 
-    def disconnect(self):
+    def disconnect(self: "MqttServer") -> None:
         try:
             self.mqtt.disconnect()
             logger.info("Disconnected from mqtt server")

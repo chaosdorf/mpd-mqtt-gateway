@@ -4,16 +4,18 @@ import os
 import logging
 import argparse
 import pathlib
+import typing
+import raven
 from gateway import MpdServer, MqttServer, MpdMqttGateway
 
-def setup_logging():
+def setup_logging() -> None:
     logging.basicConfig(
         format="%(asctime)s:%(levelname)s:%(threadName)s:%(name)s:%(message)s",
         level=logging.INFO
     )
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Push mpd music metadata to mqtt")
     parser.add_argument("--mpd-hostname", required=True)
     parser.add_argument("--mpd-port", default=6600)
@@ -24,7 +26,7 @@ def parse_arguments():
     return args
 
 
-def setup_sentry():
+def setup_sentry() -> typing.Optional[raven.Client]:
     dsn_secret_path = pathlib.Path("/run/secrets/SENTRY_DSN")
     if dsn_secret_path.exists():
         dsn = dsn_secret_path.read_text().strip()
@@ -33,14 +35,13 @@ def setup_sentry():
     else:
         logging.warn("Didn't connect to Sentry because SENTRY_DSN is not set.")
         return None
-    import raven
     logging.info("Connecting to Sentry: %s", dsn)
     raven = raven.Client(dsn)
     logging.info("Connected to Sentry.")
     return raven
 
 
-def create_gateway(args):
+def create_gateway(args: argparse.Namespace) -> MpdMqttGateway:
     return MpdMqttGateway(
         mpd_server=MpdServer(
             hostname=args.mpd_hostname,
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     try:
         args = parse_arguments()
         gateway = create_gateway(args)
-        def shutdown_gateway(signum, frame):
+        def shutdown_gateway(signum: int, frame: typing.Any) -> None:
             logging.info("Received %s", signal.Signals(signum).name)
             gateway.shutdown()
         signal.signal(signal.SIGINT, shutdown_gateway)

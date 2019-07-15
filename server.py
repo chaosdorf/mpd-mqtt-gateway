@@ -36,9 +36,9 @@ def setup_sentry() -> typing.Optional[raven.Client]:
         logging.warn("Didn't connect to Sentry because SENTRY_DSN is not set.")
         return None
     logging.info("Connecting to Sentry: %s", dsn)
-    raven = raven.Client(dsn)
+    raven_client = raven.Client(dsn)
     logging.info("Connected to Sentry.")
-    return raven
+    return raven_client
 
 
 def create_gateway(args: argparse.Namespace) -> MpdMqttGateway:

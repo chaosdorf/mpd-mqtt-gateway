@@ -5,7 +5,7 @@ import logging
 import argparse
 import pathlib
 import typing
-import raven
+import sentry_sdk
 from gateway import MpdServer, MqttServer, MpdMqttGateway
 
 def setup_logging() -> None:
@@ -26,7 +26,7 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_sentry() -> typing.Optional[raven.Client]:
+def setup_sentry() -> None:
     dsn_secret_path = pathlib.Path("/run/secrets/SENTRY_DSN")
     if dsn_secret_path.exists():
         dsn = dsn_secret_path.read_text().strip()
@@ -36,9 +36,8 @@ def setup_sentry() -> typing.Optional[raven.Client]:
         logging.warn("Didn't connect to Sentry because SENTRY_DSN is not set.")
         return None
     logging.info("Connecting to Sentry: %s", dsn)
-    raven_client = raven.Client(dsn)
+    sentry_sdk.init(dsn)
     logging.info("Connected to Sentry.")
-    return raven_client
 
 
 def create_gateway(args: argparse.Namespace) -> MpdMqttGateway:
@@ -59,17 +58,12 @@ def create_gateway(args: argparse.Namespace) -> MpdMqttGateway:
 
 if __name__ == "__main__":
     setup_logging()
-    sentry = setup_sentry()
-    try:
-        args = parse_arguments()
-        gateway = create_gateway(args)
-        def shutdown_gateway(signum: int, frame: typing.Any) -> None:
-            logging.info("Received %s", signal.Signals(signum).name)
-            gateway.shutdown()
-        signal.signal(signal.SIGINT, shutdown_gateway)
-        signal.signal(signal.SIGTERM, shutdown_gateway)
-        gateway.run()
-    except Exception as exc:
-        if sentry:
-            sentry.captureException()
-        raise
+    setup_sentry()
+    args = parse_arguments()
+    gateway = create_gateway(args)
+    def shutdown_gateway(signum: int, frame: typing.Any) -> None:
+        logging.info("Received %s", signal.Signals(signum).name)
+        gateway.shutdown()
+    signal.signal(signal.SIGINT, shutdown_gateway)
+    signal.signal(signal.SIGTERM, shutdown_gateway)
+    gateway.run()

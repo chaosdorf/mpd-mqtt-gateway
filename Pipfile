@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 python-mpd2 = "*"
 paho-mqtt = "*"
-raven = "*"
+sentry-sdk = "*"
 
 [dev-packages]
 mypy = "*"

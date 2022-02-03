@@ -14,4 +14,4 @@ ADD . /app
 RUN pipenv install --system --deploy
 
 # Run app.py when the container launches
-CMD ["./server.py", "--mpd-hostname=mpd.chaosdorf.space", "--mqtt-hostname=mqttserver.chaosdorf.space"]
+CMD ["./server.py", "--mpd-hostname=fileserver.chaosdorf.space", "--mqtt-hostname=mqttserver.chaosdorf.space"]

@@ -5,8 +5,8 @@ name = "pypi"
 
 [packages]
 python-mpd2 = "*"
-paho-mqtt = "*"
-sentry-sdk = "*"
+paho-mqtt = "<2"
+sentry-sdk = "<2"
 
 [dev-packages]
 mypy = "*"
